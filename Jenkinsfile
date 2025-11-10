@@ -98,12 +98,11 @@ pipeline {
                 }
                 
                 // Clean and build with Maven
-                sh '''
-                    mvn clean package -DskipTests
-                    echo "Build completed successfully"
-                    ls -lh target/*.jar
-                '''
-            }
+                withMaven(maven: 'M3_HOME') { // <-- Use the name from Global Tool Config
+            sh 'mvn clean package -DskipTests'
+            echo "Build completed successfully"
+            sh 'ls -lh target/*.jar' // Use sh separately for better Groovy variable expansion
+        }
         }
         
         stage('Parallel Testing') {
