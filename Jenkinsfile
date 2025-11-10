@@ -103,7 +103,7 @@ pipeline {
             echo "Build completed successfully"
             sh 'ls -lh target/*.jar' // Use sh separately for better Groovy variable expansion
         }
-        }
+        }}
         
         stage('Parallel Testing') {
             when {
