@@ -19,3 +19,104 @@ services:
       - POSTGRES_PASSWORD=petclinic
       - POSTGRES_USER=petclinic
       - POSTGRES_DB=petclinic
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-master
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"      # Jenkins Web UI
+      - "50000:50000"    # Jenkins Agent
+    volumes:
+      # Jenkins home directory
+      - jenkins_home:/var/jenkins_home
+      
+      # Docker socket for Docker-in-Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+      # Maven cache for faster builds
+      - maven_cache:/root/.m2
+      
+      # Custom CA certificates (if needed)
+      - ./certs:/certs:ro
+    environment:
+      # Jenkins options
+      - JENKINS_OPTS=--prefix=/jenkins
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Xmx2g -Xms1g
+      
+      # Docker configuration
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      
+      # Email configuration (update with your SMTP settings)
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=your-email@gmail.com
+      - SMTP_PASS=your-app-password
+      
+      # Timezone
+      - TZ=UTC
+    networks:
+      - jenkins-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Optional: Mailhog for testing email notifications
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: jenkins-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - jenkins-network
+    restart: unless-stopped
+
+  # Optional: Docker registry for storing images
+  registry:
+    image: registry:2
+    container_name: jenkins-registry
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - jenkins-network
+    restart: unless-stopped
+    environment:
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+
+  # Optional: Nginx as reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: jenkins-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - jenkins-network
+    depends_on:
+      - jenkins
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+    driver: local
+  maven_cache:
+    driver: local
+  registry_data:
+    driver: local
+
+networks:
+  jenkins-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
