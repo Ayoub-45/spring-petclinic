@@ -98,7 +98,8 @@ pipeline {
                 }
                 
                 // Clean and build with Maven
-                withMaven(maven: 'M3_HOME') { // <-- Use the name from Global Tool Config
+                withMaven(maven: 'M3_HOME', jdk: 'JDK_17') { 
+ // <-- Use the name from Global Tool Config
             sh 'mvn clean package -DskipTests'
             echo "Build completed successfully"
             sh 'ls -lh target/*.jar' // Use sh separately for better Groovy variable expansion
